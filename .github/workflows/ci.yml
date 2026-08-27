@@ -1,0 +1,30 @@
+name: InsightDash CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile app.py utils/*.py
+      - run: python - <<'PY'
+import sys
+from utils.data_loader import generate_demo_data, clean_and_standardize
+
+df = generate_demo_data(1200)
+assert len(df) >= 1000
+assert {"Date", "Product", "Category", "Quantity", "Unit Price", "Revenue", "Order ID"}.issubset(df.columns)
+cleaned, mapping, warnings = clean_and_standardize(df)
+assert len(cleaned) == len(df)
+assert cleaned["Revenue"].ge(0).all()
+print(f"Smoke test passed: {len(cleaned)} demo rows")
+PY
