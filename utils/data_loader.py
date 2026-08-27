@@ -1,6 +1,5 @@
 import io
 import re
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -30,7 +29,6 @@ def detect_columns(columns):
     used = set()
     for canonical, aliases in COLUMN_ALIASES.items():
         candidates = [canonical] + aliases
-        # exact normalized match first
         for alias in candidates:
             key = _norm(alias)
             if key in normalized and normalized[key] not in used:
@@ -39,7 +37,6 @@ def detect_columns(columns):
                 break
         if canonical in mapping:
             continue
-        # conservative fuzzy contains match
         for norm_col, original in normalized.items():
             if original in used:
                 continue
@@ -101,7 +98,6 @@ def clean_and_standardize(df):
         df["Revenue"] = df["Quantity"] * df["Unit Price"]
         warnings.append("Revenue was calculated as Quantity × Unit Price.")
     elif "Quantity" in df.columns and "Unit Price" not in df.columns:
-        # Keep uploaded revenue; Unit Price is optional.
         warnings.append("Unit Price was not detected; uploaded Revenue was used as-is.")
 
     if "Quantity" not in df.columns:
@@ -136,7 +132,6 @@ def clean_and_standardize(df):
         if optional in df.columns:
             df[optional] = df[optional].fillna("Unknown").astype(str).str.strip()
 
-    # Ensure stable presentation order without deleting custom columns.
     preferred = ["Date", "Product", "Category", "Quantity", "Unit Price", "Revenue", "Customer", "Salesperson", "Region", "Sales Channel", "Order ID"]
     ordered = [c for c in preferred if c in df.columns] + [c for c in df.columns if c not in preferred]
     return df[ordered], mapping, warnings
@@ -166,7 +161,6 @@ def generate_demo_data(n=1200, seed=42):
     end = pd.Timestamp.today().normalize()
     start = end - pd.Timedelta(days=365)
     dates = pd.date_range(start, end, freq="D")
-    # Mild upward trend + seasonal weekends create useful analytics.
     day_weights = np.array([0.9 + 0.0025*i for i in range(len(dates))])
     day_weights *= np.where(dates.dayofweek >= 4, 1.20, 1.0)
     chosen_dates = rng.choice(dates, size=n, p=day_weights / day_weights.sum())
@@ -175,6 +169,7 @@ def generate_demo_data(n=1200, seed=42):
     product_choices = rng.choice(product_names, size=n, p=base_probs / base_probs.sum())
     rows = []
     for i, (d, p) in enumerate(zip(chosen_dates, product_choices), 1):
+        d = pd.Timestamp(d)
         category, base_price, demand = products[p]
         qty = int(rng.choice([1,2,3,4,5], p=[.40,.30,.18,.08,.04]) * demand)
         qty = max(1, qty)
